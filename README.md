@@ -1,4 +1,4 @@
-# RhymeMusic（韵）
+# SlimitMusic（极限音乐）
 ## 应用截图
 
 * 主界面 
@@ -29,10 +29,4 @@
   努力填坑，是“韵”变得更好。感谢在开发过程中帮助过我的人，谢谢你们。
 * 最后安利一句：音乐，让生活更美好！
 
-## 下载应用
 
-<a href="http://pan.baidu.com/s/1hrIi7qc" target="_blank">下载韵音乐播放器</a>
-
-## 个人博客  
-
-<a href="https://valueyouth.github.io/" target="_blank">ValueYouth的个人博客</a>
