@@ -1,6 +1,7 @@
 package com.slimit.music.activity;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.SearchManager;
 import android.content.Intent;
 import android.graphics.drawable.ColorDrawable;
@@ -19,6 +20,7 @@ import android.widget.PopupWindow;
 import android.widget.SearchView;
 import android.widget.TextView;
 
+import com.slimit.music.ImNetWorkListener;
 import com.slimit.music.R;
 import com.slimit.music.application.MusicApplication;
 import com.slimit.music.bean.OnlineMusicBean;
@@ -26,9 +28,11 @@ import com.slimit.music.fragment.OnlineMusicFragment;
 import com.slimit.music.util.OnlineAudioUtil;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.slimit.music.fragment.OnlineMusicFragment.GET_DATA;
 
 
 public class SearchableActivity extends BaseActivity
@@ -38,7 +42,6 @@ public class SearchableActivity extends BaseActivity
     private static final String SUB = "[SearchableActivity]#";
 
     private ListView listView;
-    private ImageButton searchBack;
     private ImageButton searchOption;
     private SearchView searchView;
     private TextView textTips;
@@ -52,9 +55,9 @@ public class SearchableActivity extends BaseActivity
     private String content = "";
     private String type = "qq";
     ArrayAdapter<String> adapter;
-    private PopupWindow window;
+    private static PopupWindow window;
     private boolean isFirst = true;
-    List<OnlineMusicBean.DataBean> onlineAudiolist;
+    List<OnlineMusicBean.DataBean> onlineAudioList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,7 +98,10 @@ public class SearchableActivity extends BaseActivity
 
     @Override
     public boolean onQueryTextSubmit(String query) {
-
+        if (!isFirst) {
+            showPopup();
+            startThread();
+        }
         return false;
     }
 
@@ -110,17 +116,14 @@ public class SearchableActivity extends BaseActivity
             listView.setVisibility(View.INVISIBLE);
         }
         content = newText;
-        if (!isFirst) {
-            showPopup();
-            startThread();
-        }
+
         isFirst = false;
         return false;
     }
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        String url = onlineAudiolist.get(position).getUrl();
+        String url = onlineAudioList.get(position).getUrl();
         Snackbar.make(view, "歌曲正在缓冲，请耐心等待！", Snackbar.LENGTH_SHORT).show();
         application.getMusicBinder().startPlay(url);
 
@@ -135,7 +138,7 @@ public class SearchableActivity extends BaseActivity
         textTips = (TextView) findViewById(R.id.text_tips);
 
         /*按钮类组件初始化*/
-        searchBack = (ImageButton) findViewById(R.id.image_search_back);
+        ImageButton searchBack = (ImageButton) findViewById(R.id.image_search_back);
         searchOption = (ImageButton) findViewById(R.id.image_search_option);
         searchBack.setOnClickListener(this);
         searchOption.setOnClickListener(this);
@@ -179,24 +182,38 @@ public class SearchableActivity extends BaseActivity
             @Override
             public void run() {
                 Message message = new Message();
-                message.what = OnlineMusicFragment.GET_DATA;
+                message.what = GET_DATA;
                 if (true) {
-                    try {
-                        OnlineAudioUtil onlineAudioUtil = new OnlineAudioUtil(SearchableActivity.this);
-                        onlineAudiolist = onlineAudioUtil.handleJsonData(content, type);
-                        stringList = new ArrayList<>();
-                        for (OnlineMusicBean.DataBean item : onlineAudiolist) {
-                            String title = item.getTitle();
-                            String artist = item.getAuthor();
-                            String combine = artist + "——" + title;
-                            stringList.add(combine);
+                    ImNetWorkListener imNetWorkListener = new ImNetWorkListener<OnlineMusicBean>() {
+                        @Override
+                        public void failed() {
+
                         }
 
-                    } catch (MalformedURLException e) {
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        @Override
+                        public void succeed(OnlineMusicBean response) {
+                            onlineAudioList = response.getData();
+                        }
+
+                        @Override
+                        public void noData() {
+
+                        }
+                    };
+
+                    OnlineAudioUtil onlineAudioUtil = new OnlineAudioUtil(SearchableActivity.this, OnlineMusicBean.class, imNetWorkListener);
+                    onlineAudioUtil.SendGetRequest(content, type);
+                    stringList = new ArrayList<>();
+                    if (stringList.size() > 0) {
+                        stringList.clear();
                     }
+                    for (OnlineMusicBean.DataBean item : onlineAudioList) {
+                        String title = item.getTitle();
+                        String artist = item.getAuthor();
+                        String combine = artist + "——" + title;
+                        stringList.add(combine);
+                    }
+
                 }
                 handler.sendMessage(message);
             }
@@ -205,31 +222,14 @@ public class SearchableActivity extends BaseActivity
         Log.d(TAG, SUB + "线程执行结束。");
     }
 
-    @SuppressLint("HandlerLeak")
-    private Handler handler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case OnlineMusicFragment.GET_DATA:
-                    window.dismiss();
-                    initListView();
-                    break;
-                default:
-                    break;
-            }
-        }
-    };
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
     }
 
     private void showPopup() {
         View contentView = LayoutInflater.from(this).inflate(R.layout.layout_load, null, false);
-        // 创建PopupWindow对象，其中：
-        // 第一个参数是用于PopupWindow中的View，第二个参数是PopupWindow的宽度，
-        // 第三个参数是PopupWindow的高度，第四个参数指定PopupWindow能否获得焦点
         window = new PopupWindow(contentView, this.getWindow().getWindowManager().getDefaultDisplay().getWidth(), this.getWindow().getWindowManager().getDefaultDisplay().getHeight(), true);
         // 设置PopupWindow的背景
         ColorDrawable dw = new ColorDrawable(0x80000000);
@@ -238,12 +238,46 @@ public class SearchableActivity extends BaseActivity
         window.setOutsideTouchable(true);
         // 设置PopupWindow是否能响应点击事件
         window.setTouchable(true);
-        // 显示PopupWindow，其中：
-        // 第一个参数是PopupWindow的锚点，第二和第三个参数分别是PopupWindow相对锚点的x、y偏移
         window.showAsDropDown(this.getWindow().getDecorView(), (int) this.getWindow().getDecorView().getX(), (int) this.getWindow().getDecorView().getY());
-        // 或者也可以调用此方法显示PopupWindow，其中：
-        // 第一个参数是PopupWindow的父View，第二个参数是PopupWindow相对父View的位置，
-        // 第三和第四个参数分别是PopupWindow相对父View的x、y偏移
-        // window.showAtLocation(parent, gravity, x, y);
+
     }
+
+//    private static class SearchHandler extends Handler {
+//        WeakReference<Activity> mWeakReference;
+//
+//        public SearchHandler(Activity activity) {
+//            mWeakReference = new WeakReference(activity);
+//        }
+//
+//        @Override
+//        public void handleMessage(Message msg) {
+//            super.handleMessage(msg);
+//            switch (msg.what) {
+//                case OnlineMusicFragment.GET_DATA:
+//                     window.dismiss();
+////                      initListView();
+//                    break;
+//                default:
+//                    break;
+//            }
+//
+//        }
+//    }
+
+
+    @SuppressLint("HandlerLeak")
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case GET_DATA:
+                    window.dismiss();
+                    initListView();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    };
 }

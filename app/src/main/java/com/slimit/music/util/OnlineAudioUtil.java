@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.slimit.music.ImNetWorkListener;
 import com.slimit.music.bean.OnlineMusicBean;
 
 import java.io.ByteArrayOutputStream;
@@ -23,17 +24,19 @@ import java.util.Map;
  * 发送在线音乐请求，并解析出来，放在一个列表中。
  * Created by Idea on 2016/6/23.
  */
-public class OnlineAudioUtil {
-    Context context;
-
-    public OnlineAudioUtil(Context context) {
-        this.context = context;
-    }
-
+public class OnlineAudioUtil<T> {
+    private Context context;
+    private T bean;
     private static final String TAG = "RhymeMusic";
     private static final String SUB = "[OnlineAudioUtil]#";
+    private ImNetWorkListener imNetWorkListener;
 
-    public static String jsonData = null;
+    public OnlineAudioUtil(Context context, T bean, ImNetWorkListener imNetWorkListener) {
+        this.context = context;
+        this.bean = bean;
+        this.imNetWorkListener = imNetWorkListener;
+    }
+
 
     /**
      * 接收在线服务器发过来的数据。
@@ -133,8 +136,8 @@ public class OnlineAudioUtil {
      * @param content
      * @return
      */
-    public static String SendGetRequest(String content, String type) {
-        String backcontent = "";
+    public String SendGetRequest(String content, String type) {
+        String backContent = "";
         HttpURLConnection conn = null;
         try {
             StringBuilder requestUrl = new StringBuilder();
@@ -149,12 +152,28 @@ public class OnlineAudioUtil {
                 Log.i("PostGetUtil", "get请求成功");
                 Log.i("ip", requestUrl.toString());
                 InputStream in = conn.getInputStream();
-                backcontent = dealResponseResult(in);
-                backcontent = URLDecoder.decode(backcontent, "UTF-8");
-                Log.i("PostGetUtil", backcontent);
+                backContent = dealResponseResult(in);
+                backContent = URLDecoder.decode(backContent, "UTF-8");
+                Log.i("PostGetUtil", backContent);
+                if (imNetWorkListener != null) {
+                    String json = backContent;
+                    Log.d(TAG, json);
+                    Class clazz = (Class) OnlineAudioUtil.this.bean;
+                    Gson gson = new Gson();
+                    Object t = gson.fromJson(json,clazz);
+                    if (t != null) {
+                        imNetWorkListener.succeed(t);
+                    } else {
+                        imNetWorkListener.noData();
+                    }
+                }
+
                 in.close();
             } else {
                 Log.i("PostGetUtil", "get请求失败");
+                if (imNetWorkListener != null) {
+                    imNetWorkListener.failed();
+                }
             }
 
         } catch (Exception e) {
@@ -162,7 +181,7 @@ public class OnlineAudioUtil {
         } finally {
             conn.disconnect();
         }
-        return backcontent;
+        return backContent;
     }
 
 }

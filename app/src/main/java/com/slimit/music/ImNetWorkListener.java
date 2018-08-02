@@ -1,7 +1,9 @@
 package com.slimit.music;
 
-public interface ImNetWorkListener {
+public interface ImNetWorkListener<T> {
     void failed();
 
-    void succeed();
+    void succeed(T response);
+
+    void noData();
 }
