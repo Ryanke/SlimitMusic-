@@ -6,4 +6,6 @@ public interface ImNetWorkListener<T> {
     void succeed(T response);
 
     void noData();
+
+    void prepare();
 }

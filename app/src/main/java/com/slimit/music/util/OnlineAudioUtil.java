@@ -1,6 +1,8 @@
 package com.slimit.music.util;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -138,48 +140,47 @@ public class OnlineAudioUtil<T> {
      */
     public String SendGetRequest(String content, String type) {
         String backContent = "";
-        HttpURLConnection conn = null;
-        try {
-            StringBuilder requestUrl = new StringBuilder();
-            requestUrl.append("https://www.showfree.cn/download/d?name=");
-            requestUrl.append(content);
-            requestUrl.append("&type=" + type);
-            URL url = new URL(requestUrl.toString());
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(5000);
-            conn.setRequestMethod("GET");
-            if (HttpURLConnection.HTTP_OK == conn.getResponseCode()) {
-                Log.i("PostGetUtil", "get请求成功");
-                Log.i("ip", requestUrl.toString());
-                InputStream in = conn.getInputStream();
-                backContent = dealResponseResult(in);
-                backContent = URLDecoder.decode(backContent, "UTF-8");
-                Log.i("PostGetUtil", backContent);
-                if (imNetWorkListener != null) {
+        if (imNetWorkListener != null) {
+            imNetWorkListener.prepare();
+            HttpURLConnection conn = null;
+            try {
+                StringBuilder requestUrl = new StringBuilder();
+                requestUrl.append("https://www.showfree.cn/download/d?name=");
+                requestUrl.append(content);
+                requestUrl.append("&type=" + type);
+                URL url = new URL(requestUrl.toString());
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(5000);
+                conn.setRequestMethod("GET");
+                if (HttpURLConnection.HTTP_OK == conn.getResponseCode()) {
+                    Log.i("PostGetUtil", "get请求成功");
+                    Log.i("ip", requestUrl.toString());
+                    InputStream in = conn.getInputStream();
+                    backContent = dealResponseResult(in);
+                    backContent = URLDecoder.decode(backContent, "UTF-8");
+                    Log.i("PostGetUtil", backContent);
                     String json = backContent;
                     Log.d(TAG, json);
                     Class clazz = (Class) OnlineAudioUtil.this.bean;
                     Gson gson = new Gson();
-                    Object t = gson.fromJson(json,clazz);
+                    Object t = gson.fromJson(json, clazz);
                     if (t != null) {
                         imNetWorkListener.succeed(t);
                     } else {
                         imNetWorkListener.noData();
                     }
-                }
 
-                in.close();
-            } else {
-                Log.i("PostGetUtil", "get请求失败");
-                if (imNetWorkListener != null) {
+                    in.close();
+                } else {
+                    Log.i("PostGetUtil", "get请求失败");
                     imNetWorkListener.failed();
                 }
-            }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                conn.disconnect();
+            }
         }
         return backContent;
     }

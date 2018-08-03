@@ -25,6 +25,7 @@ import com.slimit.music.R;
 import com.slimit.music.application.MusicApplication;
 import com.slimit.music.bean.OnlineMusicBean;
 import com.slimit.music.fragment.OnlineMusicFragment;
+import com.slimit.music.lrc_view.LoadPopup;
 import com.slimit.music.util.OnlineAudioUtil;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ public class SearchableActivity extends BaseActivity
     private String content = "";
     private String type = "qq";
     ArrayAdapter<String> adapter;
-    private static PopupWindow window;
+    private LoadPopup window;
     private boolean isFirst = true;
     List<OnlineMusicBean.DataBean> onlineAudioList = new ArrayList<>();
 
@@ -99,7 +100,6 @@ public class SearchableActivity extends BaseActivity
     @Override
     public boolean onQueryTextSubmit(String query) {
         if (!isFirst) {
-            showPopup();
             startThread();
         }
         return false;
@@ -126,9 +126,8 @@ public class SearchableActivity extends BaseActivity
         String url = onlineAudioList.get(position).getUrl();
         Snackbar.make(view, "歌曲正在缓冲，请耐心等待！", Snackbar.LENGTH_SHORT).show();
         application.getMusicBinder().startPlay(url);
-
-//        Intent intent = new Intent(SearchableActivity.this, PlaybackActivity.class);
-//        startActivity(intent);
+        Intent intent = new Intent(SearchableActivity.this, PlaybackActivity.class);
+        startActivity(intent);
     }
 
     private void initComponents() throws IOException {
@@ -162,15 +161,10 @@ public class SearchableActivity extends BaseActivity
      * 加载数据
      */
     private void initListView() {
-        if (adapter != null) {
-            adapter.notifyDataSetChanged();
-        } else {
-            adapter = new ArrayAdapter<String>(this,
-                    android.R.layout.simple_list_item_1, stringList);
-            listView.setAdapter(adapter);
-            listView.setTextFilterEnabled(true);
-        }
-
+        adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_list_item_1, stringList);
+        listView.setAdapter(adapter);
+        listView.setTextFilterEnabled(true);
         if (0 == stringList.size()) {
             String tips = "暂无数据";
             textTips.setText(tips);
@@ -198,6 +192,16 @@ public class SearchableActivity extends BaseActivity
                         @Override
                         public void noData() {
 
+                        }
+
+                        @Override
+                        public void prepare() {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    showPopup();
+                                }
+                            });
                         }
                     };
 
@@ -229,17 +233,8 @@ public class SearchableActivity extends BaseActivity
     }
 
     private void showPopup() {
-        View contentView = LayoutInflater.from(this).inflate(R.layout.layout_load, null, false);
-        window = new PopupWindow(contentView, this.getWindow().getWindowManager().getDefaultDisplay().getWidth(), this.getWindow().getWindowManager().getDefaultDisplay().getHeight(), true);
-        // 设置PopupWindow的背景
-        ColorDrawable dw = new ColorDrawable(0x80000000);
-        window.setBackgroundDrawable(dw);
-        // 设置PopupWindow是否能响应外部点击事件
-        window.setOutsideTouchable(true);
-        // 设置PopupWindow是否能响应点击事件
-        window.setTouchable(true);
-        window.showAsDropDown(this.getWindow().getDecorView(), (int) this.getWindow().getDecorView().getX(), (int) this.getWindow().getDecorView().getY());
-
+        window = new LoadPopup(this);
+        window.showAsDropDown();
     }
 
 //    private static class SearchHandler extends Handler {

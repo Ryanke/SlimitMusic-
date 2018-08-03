@@ -3,6 +3,7 @@ package com.slimit.music.fragment;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
@@ -20,6 +21,7 @@ import com.slimit.music.R;
 import com.slimit.music.adapter.TopListAdapter;
 import com.slimit.music.application.MusicApplication;
 import com.slimit.music.bean.OnlineMusicBean;
+import com.slimit.music.lrc_view.LoadPopup;
 import com.slimit.music.service.MusicService;
 import com.slimit.music.util.OnlineAudioUtil;
 
@@ -46,6 +48,7 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
     private boolean transform;
     private MusicApplication application;
     private MusicService.MusicBinder musicBinder;
+    private LoadPopup loadPopup;
 
     @SuppressLint("HandlerLeak")
     private Handler handler = new Handler() {
@@ -55,6 +58,7 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
                 case GET_DATA:
                     audioList = ((OnlineMusicBean) msg.obj).getData();
                     setAdapter(audioList);
+                    loadPopup.dismiss();
                     Log.d(TAG, SUB + "+++++++++++++++" + audioList.size());
                     break;
 
@@ -70,6 +74,7 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.tab_online_music, container, false);
         initComponents(view);
+
 
         return view;
     }
@@ -90,6 +95,7 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
         folkRhyme.setOnClickListener(this);
         hotAudio.setOnClickListener(this);
         imgAwait.setOnClickListener(this);
+        loadPopup = new LoadPopup(getActivity());
         startThread(); // 开始线程
     }
 
@@ -118,6 +124,18 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
                     @Override
                     public void noData() {
 
+                    }
+
+                    @Override
+                    public void prepare() {
+
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                loadPopup.showAsDropDown();
+
+                            }
+                        });
                     }
                 };
 
@@ -153,7 +171,6 @@ public class OnlineMusicFragment extends Fragment implements AdapterView.OnItemC
 
             case R.id.image_top_list:
                 transform = true;
-                Snackbar.make(v, "正在加载数据，请稍后！", Snackbar.LENGTH_LONG).show();
                 startThread();
                 break;
 
